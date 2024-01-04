@@ -28,7 +28,7 @@ module "codebuild-image-pipeline" {
   stack_name = "codebuild-image-pipeline"
   parameters = {
     SAMStackName               = "codebuild-image"
-    Environment                = "build"
+    Environment                = "dev"
     VpcStackName               = "none"
     IncludePromotion           = "No"
     # AWSOrganizationId          = data.aws_organizations_organization.gds.id
