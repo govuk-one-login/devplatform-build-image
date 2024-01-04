@@ -37,6 +37,6 @@ Resources:
         - Key: Service
           Value: ci/cd
         - Key: Source
-          Value: govuk-one-login/devplatform-build-image/image/template.yml
+          Value: govuk-one-login/devplatform-build-image/image/template.yaml
         - Key: CheckovRulesToSkip
           Value: CKV_AWS_18
