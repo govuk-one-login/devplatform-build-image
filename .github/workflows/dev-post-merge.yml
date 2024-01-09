@@ -1,11 +1,11 @@
 name: Dev env build and deploy
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - bau-setup-repo
       - main
+  workflow_dispatch:
 
 defaults:
   run:
