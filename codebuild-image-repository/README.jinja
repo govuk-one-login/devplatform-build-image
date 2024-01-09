@@ -1,0 +1,11 @@
+# Container Image Repository
+## Description
+Creates ECR repositories for application images. This is required to deploy a container to Fargate with secure pipelines. This template requires that the CKV_AWS_32 Checkov check is disabled for the ContainerRepository resource. For more information, please visit the [documentation page][1].
+
+{% block parameters %}{% endblock %}
+
+{% block resources %}{% endblock %}
+
+{% block outputs %}{% endblock %}
+
+[1]: https://govukverify.atlassian.net/wiki/spaces/PLAT/pages/3107258369/How+to+deploy+a+container+to+Fargate+with+secure+pipelines#Step-3%3A-Create-a-repository-in-ECR

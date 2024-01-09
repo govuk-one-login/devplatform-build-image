@@ -6,10 +6,10 @@ data "aws_cloudformation_stack" "aws-signer" {
 }
 
 module "codebuild-image-ecr" {
-  source     = "git@github.com:govuk-one-login/ipv-terraform-modules.git//secure-pipeline/container-image-repository"
+  source     = "../../../modules/codebuild-image-repository"
   stack_name = "codebuild-image-ecr"
   parameters = {
-    PipelineStackName = "codebuild-image-pipeline"
+    GitHubRoleStackName = "codebuild-github-role"
     #AWSOrganizationId = data.aws_organizations_organization.gds.id
   }
 
@@ -18,26 +18,17 @@ module "codebuild-image-ecr" {
   }
 
   depends_on = [
-    module.codebuild-image-pipeline
+    module.codebuild-github-role
   ]
 }
 
-module "codebuild-image-pipeline" {
-  source     = "git@github.com:govuk-one-login/ipv-terraform-modules//secure-pipeline/deploy-pipeline"
-  template_url = "https://template-storage-templatebucket-1upzyw6v9cs42.s3.eu-west-2.amazonaws.com/sam-deploy-pipeline/template.yaml"
-  stack_name = "codebuild-image-pipeline"
+module "codebuild-github-role" {
+  source     = "../../../modules/codebuild-github-role"
+  stack_name = "codebuild-github-role"
   parameters = {
-    SAMStackName               = "codebuild-image"
-    Environment                = "dev"
-    VpcStackName               = "none"
-    IncludePromotion           = "No"
-    # AWSOrganizationId          = data.aws_organizations_organization.gds.id
-    LogRetentionDays           = 7
-    SigningProfileArn          = data.aws_cloudformation_stack.aws-signer.outputs["SigningProfileArn"]
-    SigningProfileVersionArn   = data.aws_cloudformation_stack.aws-signer.outputs["SigningProfileVersionArn"]
-    OneLoginRepositoryName     = "devplatform-build-image"
-    SlackNotificationType      = "Failures"
-    BuildNotificationStackName = "build-notifications"
+    OneLoginRepositoryName = "devplatform-build-image"
+    Environment = "dev"
+    #AWSOrganizationId = data.aws_organizations_organization.gds.id
   }
 
   tags_custom = {

@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  devplatform-deploy codebuild-image-repository template version: v1.3.1
+  Creates the ECR repository for codebuild images. This template requires that
+  the CKV_AWS_32 Checkov check is disabled for the ContainerRepository resource.
+  Managed by dev-platform.
+
+Parameters:
+  AWSOrganizationId:
+    Description: "Comma-separated IDs of AWS Organizations where this account and the target pipeline account are members."
+    Type: "CommaDelimitedList"
+    Default: "o-pjzf8d99ys,o-dpp53lco28"
+    AllowedPattern: "^[a-z0-9-]+$"
+    ConstraintDescription: "must be a valid organization ID, made of lowercase letters and numbers"
+
+  GitHubRoleStackName:
+    Description: >
+      The name of GitHub role stack which connects to GitHub Actions.
+      This exports the IAM role that GitHub Actions assumes.
+    Type: "String"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: >
+      must be a valid CloudFormation stack name, made of uppercase or lowercase letters,
+      numbers and hyphens
+
+Outputs:
+  CodebuildRepositoryName:
+    Description: "The name of the ECR repository to push an image to."
+    Value: !Ref CodebuildRepository
+
+  CodebuildRepositoryUri:
+    Description: "The URI of the ECR repository to push an image to."
+    Value: !GetAtt CodebuildRepository.RepositoryUri
+
+Resources:
+  CodebuildRepository:
+    Type: AWS::ECR::Repository
+    # checkov:skip=CKV_AWS_32:The ECR repository is not public. Only organisation access is permitted.
+    # checkov:skip=CKV_AWS_51:We want to be able to tag this with 'latest' so that we don't have to update the pipelines each time
+    Properties:
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: "KMS"
+      ImageTagMutability: "MUTABLE"
+      RepositoryPolicyText:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowAccountToPull
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:BatchGetImage"
+              - "ecr:DescribeImages"
+              - "ecr:DescribeRepositories"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:GetLifecyclePolicy"
+              - "ecr:GetLifecyclePolicyPreview"
+              - "ecr:GetRepositoryPolicy"
+              - "ecr:ListImages"
+            Condition:
+              StringEquals:
+                "aws:PrincipalOrgID": !Ref AWSOrganizationId
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-ContainerRepository"
+        - Key: Service
+          Value: ci/cd
+        - Key: Source
+          Value: govuk-one-login/devplatform-deploy/container-image-repository/template.yaml
+        - Key: CheckovRulesToSkip
+          Value: CKV_AWS_32
+
+  CodebuildRepositoryPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Join:
+          - "-"
+          - - !Ref AWS::StackName
+            - "CodebuildRepositoryPolicy"
+            - Fn::Select:
+                - 4
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 2
+                        - Fn::Split:
+                            - "/"
+                            - Ref: AWS::StackId
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Sid: ListImagesInRepository
+            Action:
+              - "ecr:ListImages"
+            Resource:
+              - !GetAtt CodebuildRepository.Arn
+          - Effect: Allow
+            Sid: ManageRepositoryContents
+            Action:
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:GetRepositoryPolicy"
+              - "ecr:DescribeRepositories"
+              - "ecr:ListImages"
+              - "ecr:DescribeImages"
+              - "ecr:BatchGetImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+              - "ecr:PutImage"
+            Resource:
+              - !GetAtt CodebuildRepository.Arn
+      Roles:
+        - Fn::ImportValue:
+            !Sub "${GitHubRoleStackName}-GitHubActionsRoleArn"
+
