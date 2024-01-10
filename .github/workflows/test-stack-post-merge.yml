@@ -46,4 +46,5 @@ jobs:
         uses: govuk-one-login/devplatform-upload-action@v3.4
         with:
           signing-profile-name: ${{ secrets.TEST_STACK_SIGNING_PROFILE_NAME }}
+          working-directory: test-stack
           artifact-bucket-name: ${{ secrets.TEST_STACK_ARTIFACT_BUCKET }}
