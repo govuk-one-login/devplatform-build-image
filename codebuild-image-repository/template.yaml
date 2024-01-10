@@ -10,7 +10,7 @@ Parameters:
   AWSOrganizationId:
     Description: "Comma-separated IDs of AWS Organizations where this account and the target pipeline account are members."
     Type: "CommaDelimitedList"
-    Default: "o-pjzf8d99ys,o-dpp53lco28"
+    Default: "o-dpp53lco28"
     AllowedPattern: "^[a-z0-9-]+$"
     ConstraintDescription: "must be a valid organization ID, made of lowercase letters and numbers"
 
