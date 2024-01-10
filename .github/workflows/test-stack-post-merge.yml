@@ -37,14 +37,13 @@ jobs:
           aws-region: 'eu-west-2'
 
       - name: SAM Validate
-        run: sam validate -t test-stack/template.yaml
+        run: sam validate -t template.yaml
 
       - name: SAM build
-        run:  sam build -t test-stack/template.yaml
+        run:  sam build -t template.yaml
 
       - name: Upload to S3
         uses: govuk-one-login/devplatform-upload-action@v3.4
         with:
           signing-profile-name: ${{ secrets.TEST_STACK_SIGNING_PROFILE_NAME }}
-          working-directory: test-stack
           artifact-bucket-name: ${{ secrets.TEST_STACK_ARTIFACT_BUCKET }}
