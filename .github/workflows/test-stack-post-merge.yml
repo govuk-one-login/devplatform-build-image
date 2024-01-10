@@ -34,7 +34,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.TEST_STACK_GH_ROLE_ARN }}
-          region: 'eu-west-2'
+          aws-region: 'eu-west-2'
 
       - name: SAM Validate
         run: sam validate -t test-stack/template.yaml
