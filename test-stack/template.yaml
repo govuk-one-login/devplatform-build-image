@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Test application for deployment using dev-platform build image.
+  Managed by dev-platform
+
+Resources:
+  AlarmWhenStackFails:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Alarm when the codebuild for this stack fails"
+      AlarmName: "Test stack for build image failed"
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 1
+      EvaluationPeriods: 1
+      Namespace: AWS/CodeBuild
+      MetricName: FailedBuilds
+      Statistic: Sum
+      Period: 360
+      Dimensions:
+        - Name: ProjectName
+          Value: Deploy-plat-3341-pl
+

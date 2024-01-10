@@ -1,0 +1,45 @@
+name: Node server build and deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./node
+
+jobs:
+  deploy:
+    environment: build-demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Setup SAM
+        uses: aws-actions/setup-sam@v2
+
+      - name: Assume temporary AWS role
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.TEST_STACK_GH_ROLE_ARN }}
+
+      - name: SAM Validate
+        run: sam validate -t test-stack/template.yaml
+
+      - name: SAM build
+        run:  sam build -t test-stack/template.yaml
+
+      - name: Upload to S3
+        uses: govuk-one-login/devplatform-upload-action@3.4
+        with:
+          signing-profile-name: ${{ secrets.TEST_STACK_SIGNING_PROFILE_NAME }}
+          working-directory: test-stack
+          artifact-bucket-name: ${{ secrets.TEST_STACK_ARTIFACT_BUCKET }}
