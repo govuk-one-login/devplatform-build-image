@@ -1,0 +1,476 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'demo-sam-app
+
+  Sample SAM Template for demo-sam-app
+
+  '
+Parameters:
+  CodeSigningConfigArn:
+    Type: String
+    Description: Asserts that lambdas are signed when deployed.
+    Default: none
+Conditions:
+  UseCodeSigning:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: CodeSigningConfigArn
+      - none
+Globals:
+  Function:
+    CodeSigningConfigArn:
+      Fn::If:
+      - UseCodeSigning
+      - Ref: CodeSigningConfigArn
+      - Ref: AWS::NoValue
+    Timeout: 20
+Resources:
+  StateMachineWithExternalDefinition:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri:
+        Bucket: test-bucket
+        Key: state-machine-key
+      PermissionsBoundary:
+        Ref: PermissionsBoundary
+      Policies:
+      - Version: 2012-10-17
+        Statement:
+        - Effect: Deny
+          Resource: '*'
+          Action:
+          - '*'
+  StateMachineWithInlineDefinition:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: HelloWorld
+        States:
+          HelloWorld:
+            Type: Pass
+            End: true
+      PermissionsBoundary:
+        Ref: PermissionsBoundary
+      Policies:
+      - Version: 2012-10-17
+        Statement:
+        - Effect: Deny
+          Resource: '*'
+          Action:
+          - '*'
+  APIGatewayAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      KmsKeyId:
+        Fn::GetAtt:
+        - HelloWorldKmsKey
+        - Arn
+    Metadata:
+      SamResourceId: APIGatewayAccessLogGroup
+  HelloWorldRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: s3://test-bucket1234/api-definition
+      StageName: Prod
+      AccessLogSetting:
+        Format: $context.requestId $context.httpMethod $context.path
+        DestinationArn:
+          Fn::GetAtt:
+          - APIGatewayAccessLogGroup
+          - Arn
+      CacheClusterEnabled: true
+      CacheClusterSize: '0.5'
+      TracingEnabled: true
+      Tags:
+        Product: GOV.UK Sign In
+        System: Dev Platform
+        Environment: Demo
+        Service: backend
+        Name: HelloWorldRestApi
+        Source: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+    Metadata:
+      SamResourceId: HelloWorldRestApi
+
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      # checkov:skip=CKV_AWS_116: DLQ not required
+      # checkov:skip=CKV_AWS_117: Internet access not required
+      CodeUri: s3://test-bucket1234/hello-world-function.zip/signed_456.zip
+      Handler: helloworld.App::handleRequest
+      Runtime: java11
+      Architectures:
+      - x86_64
+      MemorySize: 512
+      KmsKeyArn:
+        Fn::GetAtt:
+        - HelloWorldKmsKey
+        - Arn
+      Environment:
+        Variables:
+          PARAM1: VALUE
+      ReservedConcurrentExecutions: 5
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: HelloWorldTable
+      - DynamoDBWritePolicy:
+          TableName:
+            Ref: HelloWorldTable
+      - S3ReadPolicy:
+          BucketName:
+            Ref: HelloWorldBucket
+      - SNSPublishMessagePolicy:
+          TopicName:
+            Ref: HelloWorldTopic
+      - SQSSendMessagePolicy:
+          QueueName:
+            Ref: HelloWorldQueue
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path:
+              Fn::Transform:
+                Name: AWS::Include
+                Parameters:
+                  Location: s3://test-bucket1234/event-path
+            Method: get
+            RestApiId:
+              Ref: HelloWorldRestApi
+      AutoPublishAlias: HelloWorldFunction
+      DeploymentPreference:
+        Type: Canary10Percent5Minutes
+        Alarms:
+        - Ref: HelloWorldFunctionTooManyRequestsAlarm
+        Hooks:
+          PreTraffic:
+            Ref: PreTrafficHook
+      Tags:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: s3://test-bucket1234/tags-list
+        Name: HelloWorldFunction
+        CheckovRulesToSkip: CKV_AWS_116.CKV_AWS_117
+    Metadata:
+      SamResourceId: HelloWorldFunction
+
+  HelloWorldFunction2:
+    Type: AWS::Serverless::Function
+    Properties:
+      # checkov:skip=CKV_AWS_116: DLQ not required
+      # checkov:skip=CKV_AWS_117: Internet access not required
+      CodeUri: s3://test-bucket1234/hello-world-function-2.zip/signed_789.zip
+      Handler: helloworld2.App2::handleRequest
+      Runtime: java11
+      Architectures:
+      - x86_64
+      MemorySize: 512
+      KmsKeyArn:
+        Fn::GetAtt:
+        - HelloWorldKmsKey
+        - Arn
+      ReservedConcurrentExecutions: 5
+      Environment:
+        Variables:
+          PARAM1: VALUE
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /hello2
+            Method: get
+            RestApiId:
+              Ref: HelloWorldRestApi
+      Tags:
+        Product: GOV.UK Sign In
+        System: Dev Platform
+        Environment: Demo
+        Service: backend
+        Name: HelloWorldFunction
+        Source: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+        CheckovRulesToSkip: CKV_AWS_116.CKV_AWS_117
+    Metadata:
+      SamResourceId: HelloWorldFunction2
+  PreTrafficHook:
+    Type: AWS::Serverless::Function
+    Properties:
+      # checkov:skip=CKV_AWS_116: DLQ not required
+      # checkov:skip=CKV_AWS_117: Internet access not required
+      ReservedConcurrentExecutions: 5
+      FunctionName:
+        Fn::Join:
+        - _
+        - - CodeDeployHook
+          - Ref: AWS::StackName
+          - PreTrafficHook
+          - Fn::Select:
+            - 4
+            - Fn::Split:
+              - '-'
+              - Fn::Select:
+                - 2
+                - Fn::Split:
+                  - /
+                  - Ref: AWS::StackId
+      Handler: preTrafficHook.handler
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - codedeploy:PutLifecycleEventHookExecutionStatus
+          Resource:
+            Fn::Sub: arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - lambda:InvokeFunction
+          Resource:
+            Ref: HelloWorldFunction.Version
+      Runtime: nodejs14.x
+      KmsKeyArn:
+        Fn::GetAtt:
+        - HelloWorldKmsKey
+        - Arn
+      Environment:
+        Variables:
+          NewVersion:
+            Ref: HelloWorldFunction.Version
+      Tags:
+        Fn::Transform:
+          Name: GDS::DigitalIdentity::SomeCustomTagsTransform
+        CheckovRulesToSkip: CKV_AWS_116.CKV_AWS_117
+      CodeUri: s3://test-bucket1234/pre-traffic-hook.zip/signed_123.zip
+    Metadata:
+      SamResourceId: PreTrafficHook
+  HelloWorldLayer:
+    Type: AWS::Serverless::LayerVersion
+    Metadata:
+      BuildMethod: python3.9
+    Properties:
+      ContentUri: s3://test-bucket1234/sample_lib.zip/signed_456.zip
+      LayerName: sample-lib-layer
+      Description: Sample Library
+      CompatibleRuntimes:
+        - "python3.9"
+      RetentionPolicy: Retain
+  HelloWorldTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+      - AttributeName: Id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: Id
+        KeyType: HASH
+      SSESpecification:
+        KMSMasterKeyId:
+          Ref: HelloWorldKmsKey
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+      - Key: Product
+        Value: GOV.UK Sign In
+      - Key: System
+        Value: Dev Platform
+      - Key: Environment
+        Value: Demo
+      - Key: Service
+        Value: backend
+      - Key: Name
+        Value: HelloWorldTable
+      - Key: Source
+        Value: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+    Metadata:
+      SamResourceId: HelloWorldTable
+  HelloWorldBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Join:
+        - '-'
+        - - Ref: AWS::StackName
+          - helloworldbucket
+          - Fn::Select:
+            - 4
+            - Fn::Split:
+              - '-'
+              - Fn::Select:
+                - 2
+                - Fn::Split:
+                  - /
+                  - Ref: AWS::StackId
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LoggingConfiguration:
+        DestinationBucketName:
+          Fn::Join:
+          - '-'
+          - - Ref: AWS::StackName
+            - helloworldbucket
+            - Fn::Select:
+              - 4
+              - Fn::Split:
+                - '-'
+                - Fn::Select:
+                  - 2
+                  - Fn::Split:
+                    - /
+                    - Ref: AWS::StackId
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+      - Key: Product
+        Value: GOV.UK Sign In
+      - Key: System
+        Value: Dev Platform
+      - Key: Environment
+        Value: Demo
+      - Key: Service
+        Value: backend
+      - Key: Name
+        Value: HelloWorldBucket
+      - Key: Source
+        Value: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+    Metadata:
+      SamResourceId: HelloWorldBucket
+  HelloWorldKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+              Fn::Sub: arn:aws:iam::${AWS::AccountId}:root
+          Action: kms:*
+          Resource: '*'
+        - Fn::Transform:
+            Name: AWS::Include
+            Parameters:
+              Location: s3://test-bucket1234/policy-statement
+      Tags:
+      - Key: Product
+        Value: GOV.UK Sign In
+      - Key: System
+        Value: Dev Platform
+      - Key: Environment
+        Value: Demo
+      - Key: Service
+        Value: backend
+      - Key: Name
+        Value: HelloWorldKmsKey
+      - Key: Source
+        Value: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+    Metadata:
+      SamResourceId: HelloWorldKmsKey
+  HelloWorldTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId:
+        Ref: HelloWorldKmsKey
+      Tags:
+      - Key: Product
+        Value: GOV.UK Sign In
+      - Key: System
+        Value: Dev Platform
+      - Key: Environment
+        Value: Demo
+      - Key: Service
+        Value: backend
+      - Key: Name
+        Value: HelloWorldTopic
+      - Key: Source
+        Value: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+    Metadata:
+      SamResourceId: HelloWorldTopic
+  HelloWorldQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId:
+        Ref: HelloWorldKmsKey
+      Tags:
+      - Key: Product
+        Value: GOV.UK Sign In
+      - Key: System
+        Value: Dev Platform
+      - Key: Environment
+        Value: Demo
+      - Key: Service
+        Value: backend
+      - Key: Name
+        Value: HelloWorldQueue
+      - Key: Source
+        Value: govuk-one-login/devplatform-demo-sam-app/sam-app/template.yaml
+    Metadata:
+      SamResourceId: HelloWorldQueue
+  HelloWorldFunctionTooManyRequestsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: 'Test alarm to trigger if the lambda receives many requests.
+
+        '
+      MetricName: Invocations
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Ref: HelloWorldFunction
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+    Metadata:
+      SamResourceId: HelloWorldFunctionTooManyRequestsAlarm
+Outputs:
+  HelloWorldApi:
+    Description: API Gateway endpoint URL for Prod stage for Hello World function
+    Value:
+      Fn::Sub: https://${HelloWorldRestApi}.execute-api.${AWS::Region}.amazonaws.com/${HelloWorldRestApi.Stage}/hello/
+  HelloWorldFunction:
+    Description: Hello World Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunction
+      - Arn
+  HelloWorldFunctionIamRole:
+    Description: Implicit IAM Role created for Hello World function
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunctionRole
+      - Arn
+  HelloWorldFunction2:
+    Description: Hello World Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunction2
+      - Arn
+  HelloWorldFunctionIamRole2:
+    Description: Implicit IAM Role created for Hello World function
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunction2Role
+      - Arn
