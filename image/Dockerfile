@@ -3,7 +3,7 @@ ADD https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linu
 RUN yum install unzip python-pip -y
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 RUN unzip awscliv2.zip
-RUN sudo ./aws/install
+RUN sh ./aws/install
 RUN ls -la
 RUN unzip -q ./aws-sam-cli-linux-x86_64.zip -d ./sam-installation
 RUN sh ./sam-installation/install
