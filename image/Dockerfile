@@ -1,4 +1,4 @@
-FROM alpine:3.19.0
+FROM fedora:latest
 
 RUN yum install unzip python-pip jq -y
 
