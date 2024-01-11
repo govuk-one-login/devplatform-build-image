@@ -1,6 +1,6 @@
 FROM amazonlinux:2023
 ADD https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip ./
-RUN yum install unzip python-pip -y
+RUN yum install unzip python-pip aws -y
 RUN ls -la
 RUN unzip -q ./aws-sam-cli-linux-x86_64.zip -d ./sam-installation
 RUN sh ./sam-installation/install
