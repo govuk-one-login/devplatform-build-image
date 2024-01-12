@@ -20,15 +20,6 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Set up buildx
-        run: |
-          echo "Setting up env"
-          docker buildx create \
-            --name zstd-builder \
-            --driver docker-container \
-            --driver-opt image=moby/buildkit:v0.12.4
-          docker buildx use zstd-builder
-
       - name: Upload to ECR and tag
         uses: govuk-one-login/devplatform-upload-action-ecr-codebuild-image@bau-remove-sam
         with:
