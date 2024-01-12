@@ -21,6 +21,17 @@ jobs:
       id-token: write
       contents: read
     steps:
+      - name: Set up buildx
+        uses:
+          echo "Setting up env"
+          apt-get install docker-buildx-plugin -y
+          chmod +x ~/.docker/cli-plugins/docker-buildx
+          docker buildx create \
+            --name zstd-builder \
+            --driver docker-container \
+            --driver-opt image=moby/buildkit:v0.12.4
+          docker buildx use zstd-builder
+
       - name: Upload to ECR and tag
         uses: govuk-one-login/devplatform-upload-action-ecr-codebuild-image@bau-remove-sam
         with:
