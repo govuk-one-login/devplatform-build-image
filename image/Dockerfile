@@ -10,9 +10,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 RUN unzip awscliv2.zip
 RUN sh ./aws/install
 
-RUN pip3 install "checkov==3.1.55"
+RUN pip3 install "checkov==3.1.55" --break-system-packages
 COPY requirements.txt ./
-RUN pip3 install -r "./requirements.txt"
+RUN pip3 install -r "./requirements.txt" --break-system-packages
 
 COPY ./promotion ./
 COPY ./grafana-scripts ./
