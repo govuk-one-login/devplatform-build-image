@@ -1,6 +1,6 @@
-FROM fedora:latest
-
-RUN yum install unzip python-pip jq -y
+FROM ubuntu:noble
+RUN apt-get update
+RUN apt-get install  unzip pip jq curl -y
 
 ADD https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip ./
 RUN unzip -q ./aws-sam-cli-linux-x86_64.zip -d ./sam-installation
