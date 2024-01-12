@@ -24,7 +24,7 @@ jobs:
       - name: Set up buildx
         run: |
           echo "Setting up env"
-          apt-get install docker-buildx-plugin -y
+          sudo apt-get install docker-buildx-plugin -y
           chmod +x ~/.docker/cli-plugins/docker-buildx
           docker buildx create \
             --name zstd-builder \
