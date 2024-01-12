@@ -22,7 +22,7 @@ jobs:
       contents: read
     steps:
       - name: Set up buildx
-        uses:
+        run: |
           echo "Setting up env"
           apt-get install docker-buildx-plugin -y
           chmod +x ~/.docker/cli-plugins/docker-buildx
