@@ -10,7 +10,7 @@ RUN sh ./sam-installation/install
 
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 RUN unzip awscliv2.zip
-RUN sh ./aws/install
+RUN sh ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
 
 RUN pip3 install "checkov==3.1.55" --break-system-packages
 #COPY requirements.txt ./
