@@ -21,3 +21,13 @@ output "codebuild-image-ecr_stack_outputs" {
 output "codebuild-image-ecr_stack_tags" {
   value = module.codebuild-image-ecr.stack_tags
 }
+
+output "codebuild-promotion-image-ecr_stack_id" {
+  value = module.codebuild-promotion-image-ecr.stack_id
+}
+output "codebuild-promotion-image-ecr_stack_outputs" {
+  value = module.codebuild-promotion-image-ecr.stack_outputs
+}
+output "codebuild-promotion-image-ecr_stack_tags" {
+  value = module.codebuild-promotion-image-ecr.stack_tags
+}

@@ -31,7 +31,6 @@ variable "parameters" {
   description = "A Map of parameters to pass to the CloudFormation template at runtime"
   type = object({
     OneLoginRepositoryName = string
-    AWSOrganizationId = optional(string, "o-pjzf8d99ys,o-dpp53lco28")
     Environment = string
   })
 }
