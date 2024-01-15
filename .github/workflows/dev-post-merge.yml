@@ -5,6 +5,11 @@ on:
     branches:
       - bau-setup-repo
       - main
+    paths:
+      - .github/workflows/dev-post-merge.yml
+      - image/Dockerfile
+      - image/dynatrace-scripts/**
+      - image/grafana-scripts/**
   workflow_dispatch:
 
 defaults:

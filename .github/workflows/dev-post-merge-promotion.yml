@@ -5,6 +5,10 @@ on:
     branches:
       - bau-setup-repo
       - main
+    paths:
+      - .github/workflows/dev-post-merge-promotion.yml
+      - image/DockerfilePromotion
+      - image/promotion/**
   workflow_dispatch:
 
 defaults:
