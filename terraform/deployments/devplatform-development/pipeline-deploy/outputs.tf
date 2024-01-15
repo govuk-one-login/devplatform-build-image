@@ -12,6 +12,16 @@ output "codebuild-github-role_stack_tags" {
   value = module.codebuild-github-role.stack_tags
 }
 
+output "codebuild-promotion-github-role_stack_id" {
+  value = module.codebuild-promotion-github-role.stack_id
+}
+output "codebuild-promotion-github-role_stack_outputs" {
+  value = module.codebuild-promotion-github-role.stack_outputs
+}
+output "codebuild-promotion-github-role_stack_tags" {
+  value = module.codebuild-promotion-github-role.stack_tags
+}
+
 output "codebuild-image-ecr_stack_id" {
   value = module.codebuild-image-ecr.stack_id
 }
