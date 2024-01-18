@@ -1,0 +1,6 @@
+FROM amazonlinux:2023
+RUN yum install pip -y
+COPY requirements.txt ./
+RUN pip install -r "./requirements.txt"
+
+COPY ./promotion /

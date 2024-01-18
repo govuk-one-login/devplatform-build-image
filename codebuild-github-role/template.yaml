@@ -1,0 +1,244 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  devplatform-deploy codebuild-image-repository template version: v1.3.1
+  Creates the ECR repository for codebuild images. This template requires that
+  the CKV_AWS_32 Checkov check is disabled for the ContainerRepository resource.
+  Managed by dev-platform.
+Parameters:
+
+  OneLoginRepositoryName:
+    Description: >
+      The name of Repo which is allowed to push here.
+    Type: "String"
+    AllowedPattern: "^[a-zA-Z0-9-]+$"
+    ConstraintDescription: >
+      must be a valid GitHub repo name, made of uppercase or lowercase letters,
+      numbers and hyphens
+
+  Environment:
+    Description: "The name of the environment to deploy to"
+    Type: "String"
+    AllowedValues:
+      - build
+      - dev
+
+Conditions:
+  CreateOneLoginDevLocal:
+    Fn::Equals:
+      - !Ref Environment
+      - dev
+  CreateOneLoginBuild:
+    Fn::Equals:
+      - !Ref Environment
+      - build
+
+Outputs:
+  GitHubActionRoleArn:
+    Description: "The Role to use to push the ECR image."
+    Value: !Ref GitHubActionsRole
+    Export:
+      Name: !Sub "${AWS::StackName}-GitHubActionsRoleArn"
+
+  ContainerSignerKey:
+    Description: "The Key to use to sign the image."
+    Value: !Ref ContainerSignerKmsKey
+    Export:
+      Name: !Sub "${AWS::StackName}-ContainerSignerKmsKey"
+
+Resources:
+
+  ContainerSignerKmsKey:
+    Type: AWS::KMS::Key
+    #checkov:skip=CKV_AWS_7:Automatic key rotation can only be enabled on symmetric keys
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: Asymmetric key used to sign and validate ECR container artifacts
+      Enabled: true
+      KeySpec: RSA_4096
+      KeyUsage: SIGN_VERIFY
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource:
+              - "*"
+          - Effect: "Allow"
+            Principal:
+              Federated: !ImportValue GitHubIdentityProviderArn
+            Action:
+              - "kms:DescribeKey"
+              - "kms:GetPublicKey"
+              - "kms:Sign"
+            Resource:
+              - "*"
+            Condition:
+              StringEquals:
+                "kms:ViaService": !Sub "ecr.${AWS::Region}.amazonaws.com"
+      Tags:
+        - Key: "Name"
+          Value: !Join
+            - "-"
+            - - !Ref AWS::StackName
+              - "ContainerSignerKmsKey"
+        - Key: "Service"
+          Value: "ci/cd"
+        - Key: "Source"
+          Value: "govuk-one-login/devplatform-deploy/sam-deploy-pipeline/template.yaml"
+        - Key: CheckovRulesToSkip
+          Value: CKV_AWS_7
+  #
+  # Deny resources creation outside UK region
+  #
+
+  LockToRegionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Join:
+          - "-"
+          - - !Ref AWS::StackName
+            - "LockToRegionPolicy"
+            - Fn::Select:
+                - 4
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 2
+                        - Fn::Split:
+                            - "/"
+                            - Ref: AWS::StackId
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Deny"
+            Resource:
+              - "*"
+            NotAction:
+              - "a4b:*"
+              - "acm:*"
+              - "aws-marketplace-management:*"
+              - "aws-marketplace:*"
+              - "budgets:*"
+              - "ce:*"
+              - "chime:*"
+              - "cloudfront:*"
+              - "cognito-idp:*"
+              - "config:*"
+              - "cur:*"
+              - "directconnect:*"
+              - "ec2:Describe*"
+              - "fms:*"
+              - "globalaccelerator:*"
+              - "health:*"
+              - "iam:*"
+              - "importexport:*"
+              - "kms:*"
+              - "mobileanalytics:*"
+              - "networkmanager:*"
+              - "organizations:*"
+              - "pricing:*"
+              - "pipes:*"
+              - "route53:*"
+              - "route53domains:*"
+              - "s3:GetAccountPublic*"
+              - "s3:ListAllMyBuckets"
+              - "s3:PutAccountPublic*"
+              - "ses:*"
+              - "shield:*"
+              - "sts:*"
+              - "support:*"
+              - "synthetics:*"
+              - "trustedadvisor:*"
+              - "waf-regional:*"
+              - "waf:*"
+              - "wafv2:*"
+              - "wellarchitected:*"
+            Condition:
+              StringNotEquals:
+                "aws:RequestedRegion": [
+                  "eu-west-2"
+                ]
+
+  GitHubActionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Join:
+          - "-"
+          - - !Ref AWS::StackName
+            - "GitHubActionsPolicy"
+            - Fn::Select:
+                - 4
+                - Fn::Split:
+                    - "-"
+                    - Fn::Select:
+                        - 2
+                        - Fn::Split:
+                            - "/"
+                            - Ref: AWS::StackId
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "AccessToECR"
+            Effect: "Allow"
+            Action:
+              - "ecr:GetAuthorizationToken"
+            Resource: "*"
+          - Sid: "DefaultContainerSigning"
+            Effect: "Allow"
+            Action:
+              - "kms:DescribeKey"
+              - "kms:GetPublicKey"
+              - "kms:Sign"
+            Resource:
+              - !GetAtt ContainerSignerKmsKey.Arn
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    # checkov:skip=GDS_AWS_1:Don't run GDS_AWS_1
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Fn::If:
+              - CreateOneLoginDevLocal
+              - Effect: "Allow"
+                Action: "sts:AssumeRoleWithWebIdentity"
+                Principal:
+                  Federated: !ImportValue GitHubIdentityProviderArn
+                Condition:
+                  StringLike:
+                    "token.actions.githubusercontent.com:sub":
+                      - !Sub "repo:govuk-one-login/${OneLoginRepositoryName}*ref:refs/heads/*"
+                      - !Sub "repo:govuk-one-login/${OneLoginRepositoryName}:environment:*"
+              - !Ref AWS::NoValue
+          - Fn::If:
+              - CreateOneLoginBuild
+              - Effect: "Allow"
+                Action: "sts:AssumeRoleWithWebIdentity"
+                Principal:
+                  Federated: !ImportValue GitHubIdentityProviderArn
+                Condition:
+                  StringLike:
+                    "token.actions.githubusercontent.com:sub":
+                      - !Sub "repo:govuk-one-login/${OneLoginRepositoryName}*ref:refs/heads/main"
+              - !Ref AWS::NoValue
+      ManagedPolicyArns:
+        - !Ref GitHubActionsPolicy
+        - !Ref LockToRegionPolicy
+      Tags:
+        - Key: "Name"
+          Value: !Join
+            - "-"
+            - - !Ref AWS::StackName
+              - "GitHubActionsRole"
+        - Key: "Service"
+          Value: "ci/cd"
+        - Key: "Source"
+          Value: "govuk-one-login/devplatform-deploy/sam-deploy-pipeline/template.yaml"

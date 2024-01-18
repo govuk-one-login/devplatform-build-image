@@ -1,0 +1,34 @@
+name: Dev env build and deploy
+
+on:
+  push:
+    branches:
+      - bau-setup-repo
+      - main
+    paths:
+      - .github/workflows/dev-post-merge.yml
+      - image/Dockerfile
+      - image/dynatrace-scripts/**
+      - image/grafana-scripts/**
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Upload to ECR and tag
+        uses: govuk-one-login/devplatform-upload-action-ecr-codebuild-image@bau-remove-sam
+        with:
+          role-to-assume-arn: ${{ secrets.ROLE_TO_ASSUME }}
+          container-sign-kms-key-arn: ${{ secrets.CONTAINER_SIGN_KMS_KEY }}
+          working-directory: image
+          ecr-repo-name: ${{ secrets.ECR_REPOSITORY }}
