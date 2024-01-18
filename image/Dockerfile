@@ -1,5 +1,5 @@
 FROM amazonlinux:2023
-RUN yum install unzip pip -y
+RUN yum install unzip pip jq -y
 
 ADD https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip ./
 RUN unzip -q ./aws-sam-cli-linux-x86_64.zip -d ./sam-installation
