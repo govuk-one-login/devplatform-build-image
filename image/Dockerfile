@@ -10,10 +10,10 @@ RUN unzip awscliv2.zip
 RUN sh ./aws/install
 
 RUN pip install "checkov==3.1.55"
-COPY ./grafana-scripts/grafana-annotations.sh ./grafana-annotations.sh
-RUN chmod +x ./grafana-annotations.sh
-COPY ./dynatrace-scripts/dynatrace-metrics.sh ./dynatrace-metrics.sh
-RUN chmod +x ./dynatrace-metrics.sh
+COPY ./grafana-scripts/grafana-annotations.sh /grafana-annotations.sh
+RUN chmod +x /grafana-annotations.sh
+COPY ./dynatrace-scripts/dynatrace-metrics.sh /dynatrace-metrics.sh
+RUN chmod +x /dynatrace-metrics.sh
 
 RUN mkdir -p reports/checkov
 RUN echo '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd"name="" time="" tests="0" errors="0" skipped="0" failures="0"/>' > reports/checkov/blank.xml
