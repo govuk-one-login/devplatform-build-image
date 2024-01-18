@@ -1,8 +1,5 @@
-#FROM ubuntu:noble
-#RUN apt-get update
-#RUN apt-get install  unzip pip jq curl -y
 FROM amazonlinux:2023
-RUN yum install unzip pip -y # python3-dev rust libffi-dev cargo
+RUN yum install unzip pip -y
 
 ADD https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip ./
 RUN unzip -q ./aws-sam-cli-linux-x86_64.zip -d ./sam-installation
@@ -13,10 +10,6 @@ RUN unzip awscliv2.zip
 RUN sh ./aws/install
 
 RUN pip install "checkov==3.1.55"
-#COPY requirements.txt ./
-#RUN pip3 install -r "./requirements.txt" --break-system-packages
-
-#COPY ./promotion ./
 COPY ./grafana-scripts ./
 COPY ./dynatrace-scripts ./
 
